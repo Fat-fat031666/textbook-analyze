@@ -1,0 +1,332 @@
+// Prisma Schema - 教材分析系统数据库设计
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id          Int       @id @default(autoincrement())
+  username    String    @unique @db.VarChar(50)
+  email       String?   @unique @db.VarChar(100)
+  phone       String?   @db.VarChar(20)
+  password    String    @db.VarChar(255)
+  realName    String    @db.VarChar(50)
+  institution String?   @db.VarChar(100)
+  role        UserRole  @default(GUEST)
+  isActive    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 关联关系
+  createdKnowledgePoints KnowledgePoint[] @relation("KnowledgePointCreator")
+  auditLogs             AuditLog[]
+  interactions          Interaction[]
+  submittedAudits       AuditLog[]       @relation("AuditSubmitter")
+
+  @@map("users")
+}
+
+enum UserRole {
+  GUEST      // 访客
+  STUDENT    // 师范生
+  RESEARCHER // 教研员
+  ADMIN      // 管理员
+  AUDITOR    // 审核员
+}
+
+// 知识点类型表
+model KnowledgeType {
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(50) // 概念性知识、原理规则、技能、事实性知识
+  description String? @db.Text
+  createdAt   DateTime @default(now())
+
+  knowledgePoints KnowledgePoint[]
+
+  @@map("knowledge_types")
+}
+
+// 认知层级表
+model CognitiveLevel {
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(50) // 识记、理解、应用、分析、综合、评价
+  description String? @db.Text
+  level       Int    // 层级数值，用于排序
+  createdAt   DateTime @default(now())
+
+  knowledgePoints KnowledgePoint[]
+
+  @@map("cognitive_levels")
+}
+
+// 学科表
+model Subject {
+  id        Int    @id @default(autoincrement())
+  name      String @unique @db.VarChar(50) // 数学、语文、英语等
+  code      String @unique @db.VarChar(20)
+  createdAt DateTime @default(now())
+
+  educationLevels EducationLevel[]
+  themes          MathTheme[]
+
+  @@map("subjects")
+}
+
+// 教育阶段表
+model EducationLevel {
+  id        Int    @id @default(autoincrement())
+  subjectId Int
+  name      String @db.VarChar(50) // 初中、高中
+  code      String @db.VarChar(20)
+  createdAt DateTime @default(now())
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grades  Grade[]
+
+  @@unique([subjectId, code])
+  @@map("education_levels")
+}
+
+// 年级表
+model Grade {
+  id              Int    @id @default(autoincrement())
+  educationLevelId Int
+  name            String @db.VarChar(50) // 七年级、高一年级等
+  code            String @db.VarChar(20)
+  createdAt       DateTime @default(now())
+
+  educationLevel EducationLevel @relation(fields: [educationLevelId], references: [id], onDelete: Cascade)
+  books          Book[]
+
+  @@unique([educationLevelId, code])
+  @@map("grades")
+}
+
+// 教材表
+model Book {
+  id        Int    @id @default(autoincrement())
+  gradeId   Int
+  name      String @db.VarChar(100) // 上册、下册
+  code      String @db.VarChar(20)
+  createdAt DateTime @default(now())
+
+  grade    Grade     @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  chapters Chapter[]
+
+  @@unique([gradeId, code])
+  @@map("books")
+}
+
+// 章节表
+model Chapter {
+  id        Int    @id @default(autoincrement())
+  bookId    Int
+  name      String @db.VarChar(200)
+  code      String @db.VarChar(50)
+  order     Int    @default(0)
+  createdAt DateTime @default(now())
+
+  book     Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  sections Section[]
+
+  @@map("chapters")
+}
+
+// 节表
+model Section {
+  id        Int    @id @default(autoincrement())
+  chapterId Int
+  name      String @db.VarChar(200)
+  code      String @db.VarChar(50)
+  order     Int    @default(0)
+  createdAt DateTime @default(now())
+
+  chapter         Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  knowledgePoints KnowledgePoint[]
+
+  @@map("sections")
+}
+
+// 课时表（可选，用于更细粒度的管理）
+model Lesson {
+  id        Int    @id @default(autoincrement())
+  sectionId Int
+  name      String @db.VarChar(200)
+  code      String @unique @db.VarChar(80)
+  order     Int    @default(0)
+  createdAt DateTime @default(now())
+
+  section         Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  knowledgePoints KnowledgePoint[]
+
+  @@map("lessons")
+}
+
+// 核心主题表
+model MathTheme {
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(100) // 空间与图形、数与代数、统计与概率等
+  description String? @db.Text
+  subjectId   Int?
+  createdAt   DateTime @default(now())
+
+  subject         Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  knowledgePoints KnowledgePointTheme[]
+
+  @@map("math_themes")
+}
+
+// 知识点明细表（核心表）
+model KnowledgePoint {
+  id              Int                @id @default(autoincrement())
+  lessonId        String?            @db.VarChar(80)
+  content         String             @db.Text
+  typeId          Int
+  cognitiveLevelId Int?
+  status          KnowledgeStatus    @default(DRAFT)
+  creatorId       Int
+  versionTag      String?            @db.VarChar(20)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // 关联关系
+  type            KnowledgeType      @relation(fields: [typeId], references: [id])
+  cognitiveLevel  CognitiveLevel?    @relation(fields: [cognitiveLevelId], references: [id], onDelete: SetNull)
+  creator         User               @relation("KnowledgePointCreator", fields: [creatorId], references: [id])
+  lesson          Lesson?            @relation(fields: [lessonId], references: [code], onDelete: SetNull)
+  section         Section?           @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  sectionId       Int?
+
+  // 关联表
+  sourceRelations KpRelation[]      @relation("SourceKnowledgePoint")
+  targetRelations KpRelation[]      @relation("TargetKnowledgePoint")
+  themes          KnowledgePointTheme[]
+  auditLogs       AuditLog[]
+  interactions    Interaction[]
+
+  @@map("knowledge_points")
+  @@index([status])
+  @@index([creatorId])
+  @@index([typeId])
+  @@index([cognitiveLevelId])
+}
+
+enum KnowledgeStatus {
+  DRAFT      // 草稿
+  PENDING    // 待审核
+  PUBLISHED  // 已发布
+  REJECTED   // 已驳回
+}
+
+// 知识点关联表
+model KpRelation {
+  id           Int              @id @default(autoincrement())
+  sourceKpId   Int
+  targetKpId   Int
+  relationType RelationType     @db.VarChar(50) // 前置知识、后继知识、类比知识等
+  description  String?          @db.Text
+  createdAt    DateTime         @default(now())
+
+  sourceKp KnowledgePoint @relation("SourceKnowledgePoint", fields: [sourceKpId], references: [id], onDelete: Cascade)
+  targetKp KnowledgePoint @relation("TargetKnowledgePoint", fields: [targetKpId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceKpId, targetKpId, relationType])
+  @@map("kp_relations")
+}
+
+enum RelationType {
+  PREREQUISITE  // 前置知识
+  SUCCESSOR     // 后继知识
+  ANALOGY      // 类比知识
+  RELATED      // 相关知识
+}
+
+// 知识点-主题关联表
+model KnowledgePointTheme {
+  id        Int    @id @default(autoincrement())
+  kpId      Int
+  themeId   Int
+  createdAt DateTime @default(now())
+
+  knowledgePoint KnowledgePoint @relation(fields: [kpId], references: [id], onDelete: Cascade)
+  theme          MathTheme      @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  @@unique([kpId, themeId])
+  @@map("kp_theme_link")
+}
+
+// 审核流转日志表
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  kpId        Int
+  operatorId  Int
+  submitterId Int?      // 提交审核的用户ID
+  action      AuditAction @db.VarChar(20)
+  remark      String?   @db.Text
+  snapshot    Json?     // 操作时的内容快照
+  operateTime DateTime  @default(now())
+
+  knowledgePoint KnowledgePoint @relation(fields: [kpId], references: [id], onDelete: Cascade)
+  operator      User           @relation(fields: [operatorId], references: [id])
+  submitter     User?          @relation("AuditSubmitter", fields: [submitterId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+  @@index([kpId])
+  @@index([operatorId])
+  @@index([operateTime])
+}
+
+enum AuditAction {
+  SUBMIT    // 提交审核
+  APPROVE   // 通过
+  REJECT    // 驳回
+  REVISE    // 修订
+}
+
+// 评论交互表
+model Interaction {
+  id         Int            @id @default(autoincrement())
+  targetType TargetType     @db.VarChar(50)
+  targetId   String         @db.VarChar(100)
+  parentId   Int?           // 父评论ID，支持回复
+  content    String         @db.Text
+  userId     Int
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgePoint KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: Cascade)
+  knowledgePointId Int?
+  parent        Interaction?    @relation("InteractionReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Interaction[]    @relation("InteractionReplies")
+
+  @@map("interactions")
+  @@index([targetType, targetId])
+  @@index([parentId])
+}
+
+enum TargetType {
+  KNOWLEDGE_POINT  // 知识点
+  LESSON           // 课时
+  CHAPTER          // 章节
+  SECTION          // 节
+}
+
+// 角色权限表（RBAC）
+model RolePermission {
+  id          Int    @id @default(autoincrement())
+  role        UserRole @db.VarChar(50)
+  permission  String @db.VarChar(100) // 权限标识，如：review_data, edit_own_data等
+  description String? @db.Text
+  createdAt   DateTime @default(now())
+
+  @@unique([role, permission])
+  @@map("roles_permissions")
+}
+

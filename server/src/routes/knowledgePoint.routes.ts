@@ -54,7 +54,7 @@ router.post(
     body('typeId').isInt().withMessage('知识类型ID无效'),
     body('cognitiveLevelId').optional().isInt(),
     body('sectionId').optional().isInt(),
-    body('lessonId').optional().isString(),
+    body('lessonId').optional().isInt(),
     body('themeIds').optional().isArray(),
     body('versionTag').optional().isString(),
   ],

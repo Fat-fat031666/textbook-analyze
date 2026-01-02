@@ -148,6 +148,7 @@ model Section {
   createdAt DateTime @default(now())
 
   chapter         Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  lessons         Lesson[]
   knowledgePoints KnowledgePoint[]
 
   @@map("sections")
@@ -185,7 +186,7 @@ model MathTheme {
 // 知识点明细表（核心表）
 model KnowledgePoint {
   id              Int                @id @default(autoincrement())
-  lessonId        String?            @db.VarChar(80)
+  lessonId        Int?               // 改为通过 id 关联
   content         String             @db.Text
   typeId          Int
   cognitiveLevelId Int?
@@ -199,7 +200,7 @@ model KnowledgePoint {
   type            KnowledgeType      @relation(fields: [typeId], references: [id])
   cognitiveLevel  CognitiveLevel?    @relation(fields: [cognitiveLevelId], references: [id], onDelete: SetNull)
   creator         User               @relation("KnowledgePointCreator", fields: [creatorId], references: [id])
-  lesson          Lesson?            @relation(fields: [lessonId], references: [code], onDelete: SetNull)
+  lesson          Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   section         Section?           @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   sectionId       Int?
 
@@ -229,7 +230,7 @@ model KpRelation {
   id           Int              @id @default(autoincrement())
   sourceKpId   Int
   targetKpId   Int
-  relationType RelationType     @db.VarChar(50) // 前置知识、后继知识、类比知识等
+  relationType RelationType     // 前置知识、后继知识、类比知识等
   description  String?          @db.Text
   createdAt    DateTime         @default(now())
 
@@ -267,7 +268,7 @@ model AuditLog {
   kpId        Int
   operatorId  Int
   submitterId Int?      // 提交审核的用户ID
-  action      AuditAction @db.VarChar(20)
+  action      AuditAction
   remark      String?   @db.Text
   snapshot    Json?     // 操作时的内容快照
   operateTime DateTime  @default(now())
@@ -292,7 +293,7 @@ enum AuditAction {
 // 评论交互表
 model Interaction {
   id         Int            @id @default(autoincrement())
-  targetType TargetType     @db.VarChar(50)
+  targetType TargetType
   targetId   String         @db.VarChar(100)
   parentId   Int?           // 父评论ID，支持回复
   content    String         @db.Text
@@ -321,7 +322,7 @@ enum TargetType {
 // 角色权限表（RBAC）
 model RolePermission {
   id          Int    @id @default(autoincrement())
-  role        UserRole @db.VarChar(50)
+  role        UserRole
   permission  String @db.VarChar(100) // 权限标识，如：review_data, edit_own_data等
   description String? @db.Text
   createdAt   DateTime @default(now())

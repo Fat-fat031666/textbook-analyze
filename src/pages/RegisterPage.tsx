@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { authAPI } from '@/lib/api';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -26,7 +27,7 @@ export default function RegisterPage() {
     }));
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // 表单验证
@@ -45,6 +46,11 @@ export default function RegisterPage() {
       return;
     }
     
+    if (formData.password.length < 6) {
+      toast.error('密码长度至少6位');
+      return;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       toast.error('两次输入的密码不一致');
       return;
@@ -52,14 +58,33 @@ export default function RegisterPage() {
     
     setIsLoading(true);
     
-    // 模拟注册请求
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // 映射前端角色到后端角色
+      const roleMap: Record<string, string> = {
+        '师范生': 'STUDENT',
+        '一线教师': 'RESEARCHER',
+        '教研员': 'RESEARCHER',
+      };
       
-      // 模拟注册成功
+      // 调用后端注册API
+      await authAPI.register({
+        username: formData.username,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        password: formData.password,
+        realName: formData.realName,
+        institution: formData.institution,
+        role: roleMap[formData.role] || 'STUDENT',
+      });
+      
       toast.success('注册成功，请等待管理员审核后激活账号');
       navigate('/login');
-    }, 1500);
+    } catch (error: any) {
+      console.error('注册错误:', error);
+      toast.error(error.message || '注册失败，请重试');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

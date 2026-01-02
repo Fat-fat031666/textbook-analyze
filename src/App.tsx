@@ -19,9 +19,20 @@ export default function App() {
   // 检查用户登录状态
   useEffect(() => {
     const user = localStorage.getItem('user');
-    if (user) {
-      const userData = JSON.parse(user);
-      setIsAuthenticated(userData.isAuthenticated || false);
+    const token = localStorage.getItem('token');
+    if (user && token) {
+      try {
+        const userData = JSON.parse(user);
+        // 如果有用户信息和token，认为已登录
+        setIsAuthenticated(!!userData.id || !!userData.isAuthenticated);
+      } catch (e) {
+        // 解析失败，清除无效数据
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
     }
   }, []);
 

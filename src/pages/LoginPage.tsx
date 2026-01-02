@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { authAPI } from '@/lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,7 +12,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -21,28 +22,24 @@ export default function LoginPage() {
     
     setIsLoading(true);
     
-    // 模拟登录请求
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // 调用后端 API 登录
+      const response = await authAPI.login(email, password);
       
-      // 模拟成功登录
-      if (email === 'demo@example.com' && password === 'password') {
-        // 存储用户信息到localStorage
-        localStorage.setItem('user', JSON.stringify({
-          id: 'user001',
-          name: '张老师',
-          email,
-          role: '一线教师',
-          institution: 'XX中学',
-          isAuthenticated: true
-        }));
-        
-        toast.success('登录成功，欢迎回来！');
+      toast.success('登录成功，欢迎回来！');
+      
+      // 根据用户角色跳转
+      if (response.user.role === 'ADMIN' || response.user.role === 'AUDITOR') {
         navigate('/dashboard');
       } else {
-        toast.error('邮箱或密码错误，请重试');
+        navigate('/main');
       }
-    }, 1500);
+    } catch (error: any) {
+      console.error('登录错误:', error);
+      toast.error(error.message || '登录失败，请检查邮箱和密码');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGuestLogin = () => {

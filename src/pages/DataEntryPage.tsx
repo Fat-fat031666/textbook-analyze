@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { knowledgePointAPI } from '@/lib/api';
 
 export default function DataEntryPage() {
   const [step, setStep] = useState(1);
@@ -151,18 +152,40 @@ export default function DataEntryPage() {
   };
 
   // 保存草稿
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    // 验证必填字段
+    if (!formData.content || !formData.knowledgeType) {
+      toast.error('请至少填写知识点内容和类型');
+      return;
+    }
+    
     setIsSaving(true);
     
-    // 模拟保存请求
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      // TODO: 需要实现类型ID和主题ID的映射
+      // 这里需要根据实际的知识类型名称获取对应的ID
+      const typeId = 1; // 临时值，需要从后端获取知识类型列表
+      
+      await knowledgePointAPI.create({
+        content: formData.content,
+        typeId: typeId,
+        cognitiveLevelId: formData.cognitiveLevel ? parseInt(formData.cognitiveLevel) : null,
+        sectionId: null, // TODO: 根据选择的章节获取sectionId
+        themeIds: [], // TODO: 根据选择的主题获取themeIds
+        versionTag: null,
+      });
+      
       toast.success('草稿保存成功');
-    }, 1000);
+    } catch (error: any) {
+      console.error('保存草稿错误:', error);
+      toast.error(error.message || '保存失败，请重试');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // 提交审核
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     // 验证第二步表单
     if (!formData.content || !formData.knowledgeType || formData.themes.length === 0) {
       toast.error('请完成所有必填字段');
@@ -171,12 +194,33 @@ export default function DataEntryPage() {
     
     setIsSaving(true);
     
-    // 模拟提交请求
-    setTimeout(() => {
+    try {
+      // 先创建知识点
+      const typeId = 1; // TODO: 需要从后端获取
+      const result = await knowledgePointAPI.create({
+        content: formData.content,
+        typeId: typeId,
+        cognitiveLevelId: formData.cognitiveLevel ? parseInt(formData.cognitiveLevel) : null,
+        sectionId: null,
+        themeIds: [],
+        versionTag: null,
+      });
+      
+      // 然后提交审核
+      const kpId = result.knowledgePoint?.id || result.id;
+      if (kpId) {
+        await knowledgePointAPI.submitForReview(kpId);
+        toast.success('已提交审核，请等待审核结果');
+        navigate('/dashboard');
+      } else {
+        throw new Error('创建知识点失败，未返回ID');
+      }
+    } catch (error: any) {
+      console.error('提交审核错误:', error);
+      toast.error(error.message || '提交失败，请重试');
+    } finally {
       setIsSaving(false);
-      toast.success('已提交审核，请等待审核结果');
-      navigate('/dashboard');
-    }, 1500);
+    }
   };
 
   // 渲染第一步：选择教材定位

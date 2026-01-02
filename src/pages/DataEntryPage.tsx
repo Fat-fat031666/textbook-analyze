@@ -1,5 +1,5 @@
 // 数据录入页面
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -52,13 +52,13 @@ export default function DataEntryPage() {
         setCognitiveLevels(levelsRes.cognitiveLevels || []);
 
         // 获取主题列表
-        const themesRes = await themeAPI.getList();
+        const themesRes = await themeAPI.getList() as { themes?: Array<{ id: number; name: string }> };
         const themes = themesRes.themes || [];
-        setAvailableThemes(themes.map((t: any) => t.name));
+        setAvailableThemes(themes.map((t: { id: number; name: string }) => t.name));
         
         // 创建主题名称到ID的映射
         const map = new Map<string, number>();
-        themes.forEach((t: any) => {
+        themes.forEach((t: { id: number; name: string }) => {
           map.set(t.name, t.id);
         });
         setThemeMap(map);
@@ -74,7 +74,7 @@ export default function DataEntryPage() {
   // 处理表单输入变化
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev: typeof formData) => ({
       ...prev,
       [name]: value
     }));
@@ -82,11 +82,11 @@ export default function DataEntryPage() {
 
   // 处理主题标签变化
   const handleThemeChange = (theme: string) => {
-    setFormData(prev => {
+    setFormData((prev: typeof formData) => {
       if (prev.themes.includes(theme)) {
         return {
           ...prev,
-          themes: prev.themes.filter(t => t !== theme)
+          themes: prev.themes.filter((t: string) => t !== theme)
         };
       } else {
         return {
@@ -114,7 +114,7 @@ export default function DataEntryPage() {
     // 检查主题是否已在预设列表中
     if (availableThemes.includes(themeName)) {
       // 如果已在预设列表中，直接添加
-      setFormData(prev => ({
+      setFormData((prev: typeof formData) => ({
         ...prev,
         themes: [...prev.themes, themeName]
       }));
@@ -126,16 +126,16 @@ export default function DataEntryPage() {
 
     // 如果是新主题，尝试查找或创建
     try {
-      const themesRes = await themeAPI.getList();
-      const existingTheme = themesRes.themes?.find((t: any) => t.name === themeName);
+      const themesRes = await themeAPI.getList() as { themes?: Array<{ id: number; name: string }> };
+      const existingTheme = themesRes.themes?.find((t: { id: number; name: string }) => t.name === themeName);
       
       if (existingTheme) {
         // 主题已存在，添加到列表和映射
-        setAvailableThemes(prev => [...prev, themeName]);
+        setAvailableThemes((prev: string[]) => [...prev, themeName]);
         const newMap = new Map(themeMap);
         newMap.set(themeName, existingTheme.id);
         setThemeMap(newMap);
-        setFormData(prev => ({
+        setFormData((prev: typeof formData) => ({
           ...prev,
           themes: [...prev.themes, themeName]
         }));
@@ -144,22 +144,22 @@ export default function DataEntryPage() {
         toast.success('主题已添加');
       } else {
         // 主题不存在，添加到表单（创建时会在后端处理）
-        setFormData(prev => ({
+        setFormData((prev: typeof formData) => ({
           ...prev,
           themes: [...prev.themes, themeName]
         }));
-        setAvailableThemes(prev => [...prev, themeName]);
+        setAvailableThemes((prev: string[]) => [...prev, themeName]);
         setCustomThemeInput('');
         setShowCustomThemeInput(false);
         toast.success('自定义主题已添加（提交时将尝试创建）');
       }
     } catch (error) {
       // API调用失败，仍然允许添加（提交时处理）
-      setFormData(prev => ({
+      setFormData((prev: typeof formData) => ({
         ...prev,
         themes: [...prev.themes, themeName]
       }));
-      setAvailableThemes(prev => [...prev, themeName]);
+      setAvailableThemes((prev: string[]) => [...prev, themeName]);
       setCustomThemeInput('');
       setShowCustomThemeInput(false);
       toast.success('自定义主题已添加');
@@ -168,7 +168,7 @@ export default function DataEntryPage() {
 
   // 处理难度等级变化
   const handleDifficultyChange = (value: number) => {
-    setFormData(prev => ({
+    setFormData((prev: typeof formData) => ({
       ...prev,
       difficulty: value
     }));
@@ -256,7 +256,7 @@ export default function DataEntryPage() {
     
     try {
       // 根据知识类型名称查找ID
-      const knowledgeType = knowledgeTypes.find(kt => kt.name === formData.knowledgeType);
+      const knowledgeType = knowledgeTypes.find((kt: { id: number; name: string }) => kt.name === formData.knowledgeType);
       if (!knowledgeType) {
         toast.error('请选择有效的知识类型');
         setIsSaving(false);
@@ -267,14 +267,14 @@ export default function DataEntryPage() {
       const themeIds: number[] = [];
       const newThemeMap = new Map(themeMap);
       for (const themeName of formData.themes) {
-        let themeId = newThemeMap.get(themeName);
-        if (themeId) {
+        let themeId: number | undefined = newThemeMap.get(themeName);
+        if (themeId !== undefined) {
           themeIds.push(themeId);
         } else {
           // 尝试查找现有主题
           try {
-            const themesRes = await themeAPI.getList();
-            const existingTheme = themesRes.themes?.find((t: any) => t.name === themeName);
+            const themesRes = await themeAPI.getList() as { themes?: Array<{ id: number; name: string }> };
+            const existingTheme = themesRes.themes?.find((t: { id: number; name: string }) => t.name === themeName);
             if (existingTheme) {
               themeIds.push(existingTheme.id);
               newThemeMap.set(themeName, existingTheme.id);
@@ -336,7 +336,7 @@ export default function DataEntryPage() {
     
     try {
       // 根据知识类型名称查找ID
-      const knowledgeType = knowledgeTypes.find(kt => kt.name === formData.knowledgeType);
+      const knowledgeType = knowledgeTypes.find((kt: { id: number; name: string }) => kt.name === formData.knowledgeType);
       if (!knowledgeType) {
         toast.error('请选择有效的知识类型');
         setIsSaving(false);
@@ -345,18 +345,19 @@ export default function DataEntryPage() {
 
       // 将主题名称映射为ID
       const themeIds: number[] = [];
+      const newThemeMap = new Map(themeMap);
       for (const themeName of formData.themes) {
-        const themeId = themeMap.get(themeName);
-        if (themeId) {
+        let themeId: number | undefined = newThemeMap.get(themeName);
+        if (themeId !== undefined) {
           themeIds.push(themeId);
         } else {
           // 如果是自定义主题，尝试查找或创建
           try {
-            const themesRes = await themeAPI.getList();
-            const existingTheme = themesRes.themes?.find((t: any) => t.name === themeName);
+            const themesRes = await themeAPI.getList() as { themes?: Array<{ id: number; name: string }> };
+            const existingTheme = themesRes.themes?.find((t: { id: number; name: string }) => t.name === themeName);
             if (existingTheme) {
               themeIds.push(existingTheme.id);
-              themeMap.set(themeName, existingTheme.id);
+              newThemeMap.set(themeName, existingTheme.id);
             } else {
               toast.warning(`主题"${themeName}"不存在，将跳过该主题`);
             }
@@ -365,6 +366,7 @@ export default function DataEntryPage() {
           }
         }
       }
+      setThemeMap(newThemeMap);
 
       if (themeIds.length === 0) {
         toast.error('请至少选择一个有效的主题');
@@ -405,7 +407,8 @@ export default function DataEntryPage() {
       });
       
       // 然后提交审核
-      const kpId = result.knowledgePoint?.id || result.id;
+      const resultData = result as { knowledgePoint?: { id: number }; id?: number };
+      const kpId = resultData.knowledgePoint?.id || resultData.id;
       if (kpId) {
         await knowledgePointAPI.submitForReview(kpId);
         toast.success('已提交审核，请等待审核结果');
@@ -514,12 +517,6 @@ export default function DataEntryPage() {
                 <option value="高三年级">高三年级</option>
               </>
             )}
-            {/* 旧代码已移除
-            {formData.educationLevel && grades[formData.educationLevel as keyof typeof grades] && 
-              grades[formData.educationLevel as keyof typeof grades].map(grade => (
-                <option key={grade} value={grade}>{grade}</option>
-              ))
-            }
           </select>
         </div>
 
@@ -618,7 +615,7 @@ export default function DataEntryPage() {
           >
             <option value="">请选择知识类型</option>
             {knowledgeTypes.length > 0 ? (
-              knowledgeTypes.map((type: any) => (
+              knowledgeTypes.map((type: { id: number; name: string }) => (
                 <option key={type.id} value={type.name}>{type.name}</option>
               ))
             ) : (
@@ -688,8 +685,8 @@ export default function DataEntryPage() {
               <input
                 type="text"
                 value={customThemeInput}
-                onChange={(e) => setCustomThemeInput(e.target.value)}
-                onKeyPress={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomThemeInput(e.target.value)}
+                onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     handleAddCustomTheme();
@@ -733,7 +730,7 @@ export default function DataEntryPage() {
             <div className="mt-2">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">已选主题：</div>
               <div className="flex flex-wrap gap-2">
-                {formData.themes.map((theme) => (
+                {formData.themes.map((theme: string) => (
                   <span
                     key={theme}
                     className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-sm"
@@ -768,7 +765,7 @@ export default function DataEntryPage() {
           >
             <option value="">请选择认知层级</option>
             {cognitiveLevels.length > 0 ? (
-              cognitiveLevels.map((level: any) => (
+              cognitiveLevels.map((level: { id: number; name: string; level: number }) => (
                 <option key={level.id} value={level.id}>
                   {level.name}
                 </option>

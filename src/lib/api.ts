@@ -42,7 +42,10 @@ async function apiRequest<T>(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '请求失败');
+    // 保留完整的错误信息，包括 details
+    const error = new Error(data.error || '请求失败');
+    (error as any).details = data.details;
+    throw error;
   }
 
   return data;
@@ -121,9 +124,19 @@ export const knowledgePointAPI = {
 
   // 创建知识点
   create: async (data: any) => {
+    // 移除所有 null 和 undefined 值，避免验证错误
+    const cleanData = Object.keys(data).reduce((acc: any, key: string) => {
+      if (data[key] !== null && data[key] !== undefined) {
+        acc[key] = data[key];
+      }
+      return acc;
+    }, {});
+    
+    console.log('API 发送的数据（清理后）:', JSON.stringify(cleanData, null, 2));
+    
     return apiRequest('/knowledge-points', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(cleanData),
     });
   },
 

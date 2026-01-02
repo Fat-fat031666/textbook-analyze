@@ -191,7 +191,7 @@ export default function DashboardPage() {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h3 className="font-medium line-clamp-2">{review.content?.substring(0, 50) || '知识点')}...</h3>
+                        <h3 className="font-medium line-clamp-2">{review.content?.substring(0, 50) || '知识点'}...</h3>
                         <div className="flex gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
                           <span>创建者: {review.creator?.realName || review.creator?.username || '未知'}</span>
                           <span>类型: {review.type?.name || '未知'}</span>

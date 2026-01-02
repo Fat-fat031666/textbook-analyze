@@ -52,11 +52,12 @@ router.post(
   [
     body('content').trim().notEmpty().withMessage('知识点内容不能为空'),
     body('typeId').isInt().withMessage('知识类型ID无效'),
-    body('cognitiveLevelId').optional().isInt(),
-    body('sectionId').optional().isInt(),
-    body('lessonId').optional().isInt(),
-    body('themeIds').optional().isArray(),
-    body('versionTag').optional().isString(),
+    body('cognitiveLevelId').optional({ nullable: true, checkFalsy: true }).isInt().withMessage('认知层级ID无效'),
+    body('sectionId').optional({ nullable: true, checkFalsy: true }).isInt().withMessage('章节ID无效'),
+    body('lessonId').optional({ nullable: true, checkFalsy: true }).isInt().withMessage('课时ID无效'),
+    body('themeIds').optional({ nullable: true }).isArray().withMessage('主题ID必须是数组'),
+    body('themeIds.*').optional().isInt().withMessage('主题ID必须是整数'),
+    body('versionTag').optional({ nullable: true, checkFalsy: true }).isString().withMessage('版本标签必须是字符串'),
   ],
   validate,
   createKnowledgePoint

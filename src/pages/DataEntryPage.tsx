@@ -267,7 +267,7 @@ export default function DataEntryPage() {
       const themeIds: number[] = [];
       const newThemeMap = new Map(themeMap);
       for (const themeName of formData.themes) {
-        let themeId: number | undefined = newThemeMap.get(themeName);
+        let themeId: number | undefined = newThemeMap.get(themeName) as number | undefined;
         if (themeId !== undefined) {
           themeIds.push(themeId);
         } else {
@@ -306,14 +306,32 @@ export default function DataEntryPage() {
         }
       }
       
-      await knowledgePointAPI.create({
-        content: formData.content,
+      // 确保 cognitiveLevelId 是有效的整数或 null
+      let cognitiveLevelIdValue: number | null = null;
+      if (formData.cognitiveLevel && formData.cognitiveLevel.trim() !== '') {
+        const parsed = parseInt(formData.cognitiveLevel);
+        if (!isNaN(parsed)) {
+          cognitiveLevelIdValue = parsed;
+        }
+      }
+      
+      const createData: any = {
+        content: formData.content.trim(),
         typeId: knowledgeType.id,
-        cognitiveLevelId: formData.cognitiveLevel ? parseInt(formData.cognitiveLevel) : null,
-        sectionId: sectionId,
-        themeIds: themeIds,
-        versionTag: null,
-      });
+      };
+      
+      // 只添加非 null 的可选字段
+      if (cognitiveLevelIdValue !== null) {
+        createData.cognitiveLevelId = cognitiveLevelIdValue;
+      }
+      if (sectionId !== null) {
+        createData.sectionId = sectionId;
+      }
+      if (themeIds.length > 0) {
+        createData.themeIds = themeIds;
+      }
+      
+      await knowledgePointAPI.create(createData);
       
       toast.success('草稿保存成功');
     } catch (error: any) {
@@ -346,8 +364,23 @@ export default function DataEntryPage() {
       // 将主题名称映射为ID
       const themeIds: number[] = [];
       const newThemeMap = new Map(themeMap);
+      
+      // 如果themeMap为空，重新加载主题数据
+      if (newThemeMap.size === 0) {
+        try {
+          const themesRes = await themeAPI.getList() as { themes?: Array<{ id: number; name: string }> };
+          const themes = themesRes.themes || [];
+          themes.forEach((t: { id: number; name: string }) => {
+            newThemeMap.set(t.name, t.id);
+          });
+          setThemeMap(newThemeMap);
+        } catch (error) {
+          console.error('重新加载主题数据失败:', error);
+        }
+      }
+      
       for (const themeName of formData.themes) {
-        let themeId: number | undefined = newThemeMap.get(themeName);
+        let themeId: number | undefined = newThemeMap.get(themeName) as number | undefined;
         if (themeId !== undefined) {
           themeIds.push(themeId);
         } else {
@@ -359,20 +392,28 @@ export default function DataEntryPage() {
               themeIds.push(existingTheme.id);
               newThemeMap.set(themeName, existingTheme.id);
             } else {
+              console.warn(`主题"${themeName}"不存在于数据库中`);
               toast.warning(`主题"${themeName}"不存在，将跳过该主题`);
             }
           } catch (error) {
             console.error(`处理主题"${themeName}"失败:`, error);
+            toast.warning(`查找主题"${themeName}"失败，将跳过该主题`);
           }
         }
       }
       setThemeMap(newThemeMap);
 
       if (themeIds.length === 0) {
-        toast.error('请至少选择一个有效的主题');
+        toast.error('请至少选择一个有效的主题。如果主题列表为空，请刷新页面重新加载数据。');
         setIsSaving(false);
         return;
       }
+      
+      console.log('主题映射结果:', {
+        选择的主题: formData.themes,
+        映射的ID: themeIds,
+        主题映射表: Array.from(newThemeMap.entries())
+      });
 
       // 查找或创建 Section
       let sectionId: number | null = null;
@@ -397,14 +438,43 @@ export default function DataEntryPage() {
       }
       
       // 先创建知识点
-      const result = await knowledgePointAPI.create({
-        content: formData.content,
+      // 确保 cognitiveLevelId 是有效的整数
+      let cognitiveLevelIdValue: number | undefined = undefined;
+      if (formData.cognitiveLevel && formData.cognitiveLevel.trim() !== '') {
+        const parsed = parseInt(formData.cognitiveLevel, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          cognitiveLevelIdValue = parsed;
+        }
+      }
+      
+      const createData: any = {
+        content: formData.content.trim(),
         typeId: knowledgeType.id,
-        cognitiveLevelId: formData.cognitiveLevel ? parseInt(formData.cognitiveLevel) : null,
-        sectionId: sectionId,
-        themeIds: themeIds,
-        versionTag: null,
+      };
+      
+      // 只添加有值的可选字段（不发送 null 或 undefined）
+      if (cognitiveLevelIdValue !== undefined) {
+        createData.cognitiveLevelId = cognitiveLevelIdValue;
+      }
+      if (sectionId !== null && sectionId !== undefined) {
+        createData.sectionId = sectionId;
+      }
+      if (themeIds.length > 0) {
+        createData.themeIds = themeIds;
+      }
+      
+      // 调试信息：显示所有字段的值
+      console.log('表单数据检查:', {
+        '认知层级原始值': formData.cognitiveLevel,
+        '认知层级解析后': cognitiveLevelIdValue,
+        'sectionId': sectionId,
+        'themeIds': themeIds,
+        'themeIds长度': themeIds.length,
+        '所有表单字段': formData
       });
+      console.log('最终发送的数据:', JSON.stringify(createData, null, 2));
+      
+      const result = await knowledgePointAPI.create(createData);
       
       // 然后提交审核
       const resultData = result as { knowledgePoint?: { id: number }; id?: number };
@@ -418,7 +488,17 @@ export default function DataEntryPage() {
       }
     } catch (error: any) {
       console.error('提交审核错误:', error);
-      toast.error(error.message || '提交失败，请重试');
+      // 显示更详细的错误信息
+      if (error.message) {
+        toast.error(error.message);
+      } else if (error.details && Array.isArray(error.details)) {
+        const errorMessages = error.details.map((d: any) => d.msg || d.message).join(', ');
+        toast.error(`验证失败: ${errorMessages}`);
+      } else if (error.error) {
+        toast.error(error.error);
+      } else {
+        toast.error('提交失败，请重试');
+      }
     } finally {
       setIsSaving(false);
     }

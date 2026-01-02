@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { knowledgePointAPI } from '@/lib/api';
+import { knowledgePointAPI, optionAPI, themeAPI, sectionAPI } from '@/lib/api';
 
 export default function DataEntryPage() {
   const [step, setStep] = useState(1);
@@ -22,42 +22,54 @@ export default function DataEntryPage() {
     difficulty: 1,
     cognitiveLevel: ''
   });
-  const [availableChapters, setAvailableChapters] = useState<string[]>([]);
-  const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [customThemeInput, setCustomThemeInput] = useState('');
+  const [showCustomThemeInput, setShowCustomThemeInput] = useState(false);
   const navigate = useNavigate();
 
-  // 模拟主题标签
-  const availableThemes = ['代数', '几何', '统计', '概率', '函数', '数论', '微积分', '现代文阅读', '古代诗文', '写作', '听力', '口语', '阅读', '写作'];
+  // 从后端获取选项数据
+  const [availableThemes, setAvailableThemes] = useState<any[]>([]);
+  const [cognitiveLevels, setCognitiveLevels] = useState<any[]>([]);
+  const [knowledgeTypes, setKnowledgeTypes] = useState<any[]>([]);
+  const [themeMap, setThemeMap] = useState<Map<string, number>>(new Map()); // 主题名称到ID的映射
 
-  // 模拟认知层级
-  const cognitiveLevels = ['记忆', '理解', '应用', '分析', '评价', '创造'];
+  // 预设主题列表（可以从后端获取）
+  const presetThemes = [
+    '代数', '几何', '统计', '概率', '函数', '数论', '微积分',
+    '现代文阅读', '古代诗文', '写作', '听力', '口语', '阅读'
+  ];
 
-  // 模拟教材版本数据
-  const textbookVersions = ['人教版', '北师大版', '苏教版', '沪教版', '湘教版'];
+  // 获取选项数据
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        // 获取知识类型列表
+        const typesRes = await optionAPI.getKnowledgeTypes();
+        setKnowledgeTypes(typesRes.knowledgeTypes || []);
 
-  // 模拟年级数据
-  const grades = {
-    '初中': ['七年级', '八年级', '九年级'],
-    '高中': ['高一年级', '高二年级', '高三年级']
-  };
+        // 获取认知层级列表
+        const levelsRes = await optionAPI.getCognitiveLevels();
+        setCognitiveLevels(levelsRes.cognitiveLevels || []);
 
-  // 模拟册别数据
-  const books = ['上册', '下册'];
-
-  // 模拟章节数据
-  const chaptersData = {
-    '七年级': {
-      '上册': ['第一章 有理数', '第二章 整式的加减', '第三章 一元一次方程'],
-      '下册': ['第五章 相交线与平行线', '第六章 实数', '第七章 平面直角坐标系']
-    }
-  };
-
-  // 模拟节数据
-  const sectionsData = {
-    '第一章 有理数': ['1.1 正数和负数', '1.2 有理数', '1.3 有理数的加减法'],
-    '第二章 整式的加减': ['2.1 整式', '2.2 整式的加减']
-  };
+        // 获取主题列表
+        const themesRes = await themeAPI.getList();
+        const themes = themesRes.themes || [];
+        setAvailableThemes(themes.map((t: any) => t.name));
+        
+        // 创建主题名称到ID的映射
+        const map = new Map<string, number>();
+        themes.forEach((t: any) => {
+          map.set(t.name, t.id);
+        });
+        setThemeMap(map);
+      } catch (error) {
+        console.error('获取选项数据失败:', error);
+        // 如果API失败，使用预设主题
+        setAvailableThemes(presetThemes);
+      }
+    };
+    fetchOptions();
+  }, []);
 
   // 处理表单输入变化
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -85,6 +97,75 @@ export default function DataEntryPage() {
     });
   };
 
+  // 添加自定义主题
+  const handleAddCustomTheme = async () => {
+    if (!customThemeInput.trim()) {
+      toast.error('请输入主题名称');
+      return;
+    }
+
+    const themeName = customThemeInput.trim();
+    
+    if (formData.themes.includes(themeName)) {
+      toast.error('该主题已存在');
+      return;
+    }
+
+    // 检查主题是否已在预设列表中
+    if (availableThemes.includes(themeName)) {
+      // 如果已在预设列表中，直接添加
+      setFormData(prev => ({
+        ...prev,
+        themes: [...prev.themes, themeName]
+      }));
+      setCustomThemeInput('');
+      setShowCustomThemeInput(false);
+      toast.success('主题已添加');
+      return;
+    }
+
+    // 如果是新主题，尝试查找或创建
+    try {
+      const themesRes = await themeAPI.getList();
+      const existingTheme = themesRes.themes?.find((t: any) => t.name === themeName);
+      
+      if (existingTheme) {
+        // 主题已存在，添加到列表和映射
+        setAvailableThemes(prev => [...prev, themeName]);
+        const newMap = new Map(themeMap);
+        newMap.set(themeName, existingTheme.id);
+        setThemeMap(newMap);
+        setFormData(prev => ({
+          ...prev,
+          themes: [...prev.themes, themeName]
+        }));
+        setCustomThemeInput('');
+        setShowCustomThemeInput(false);
+        toast.success('主题已添加');
+      } else {
+        // 主题不存在，添加到表单（创建时会在后端处理）
+        setFormData(prev => ({
+          ...prev,
+          themes: [...prev.themes, themeName]
+        }));
+        setAvailableThemes(prev => [...prev, themeName]);
+        setCustomThemeInput('');
+        setShowCustomThemeInput(false);
+        toast.success('自定义主题已添加（提交时将尝试创建）');
+      }
+    } catch (error) {
+      // API调用失败，仍然允许添加（提交时处理）
+      setFormData(prev => ({
+        ...prev,
+        themes: [...prev.themes, themeName]
+      }));
+      setAvailableThemes(prev => [...prev, themeName]);
+      setCustomThemeInput('');
+      setShowCustomThemeInput(false);
+      toast.success('自定义主题已添加');
+    }
+  };
+
   // 处理难度等级变化
   const handleDifficultyChange = (value: number) => {
     setFormData(prev => ({
@@ -93,30 +174,7 @@ export default function DataEntryPage() {
     }));
   };
 
-  // 当教材层级变化时，更新可选的下一级数据
-  useEffect(() => {
-    if (formData.educationLevel && formData.grade && formData.book) {
-      if (chaptersData[formData.grade] && chaptersData[formData.grade][formData.book]) {
-        setAvailableChapters(chaptersData[formData.grade][formData.book]);
-      } else {
-        setAvailableChapters([]);
-      }
-      setFormData(prev => ({ ...prev, chapter: '', section: '' }));
-      setAvailableSections([]);
-    }
-  }, [formData.educationLevel, formData.grade, formData.book]);
-
-  // 当章节变化时，更新可选的节数据
-  useEffect(() => {
-    if (formData.chapter) {
-      if (sectionsData[formData.chapter]) {
-        setAvailableSections(sectionsData[formData.chapter]);
-      } else {
-        setAvailableSections([]);
-      }
-      setFormData(prev => ({ ...prev, section: '' }));
-    }
-  }, [formData.chapter]);
+  // 章和节已改为文本输入，不再需要动态更新选项
 
   // 自动保存草稿
   useEffect(() => {
@@ -151,6 +209,41 @@ export default function DataEntryPage() {
     }
   };
 
+  // 辅助函数：将前端表单数据转换为后端需要的代码格式
+  const getSectionCodes = () => {
+    // 科目代码映射
+    const subjectCodeMap: Record<string, string> = {
+      'math': 'math',
+      'chinese': 'chinese',
+      'english': 'english',
+      'physics': 'physics',
+      'chemistry': 'chemistry',
+      'biology': 'biology',
+      'history': 'history',
+      'geography': 'geography',
+    };
+    const subjectCode = subjectCodeMap[formData.subject] || formData.subject;
+
+    // 学段代码映射
+    const educationLevelCode = formData.educationLevel === '初中' ? 'junior' : formData.educationLevel === '高中' ? 'senior' : formData.educationLevel.toLowerCase();
+
+    // 年级代码映射
+    const gradeCodeMap: Record<string, string> = {
+      '七年级': 'grade7',
+      '八年级': 'grade8',
+      '九年级': 'grade9',
+      '高一年级': 'grade10',
+      '高二年级': 'grade11',
+      '高三年级': 'grade12',
+    };
+    const gradeCode = gradeCodeMap[formData.grade] || formData.grade.toLowerCase().replace(/\s+/g, '');
+
+    // 册别代码映射
+    const bookCode = formData.book === '上册' ? 'volume1' : formData.book === '下册' ? 'volume2' : formData.book.toLowerCase();
+
+    return { subjectCode, educationLevelCode, gradeCode, bookCode };
+  };
+
   // 保存草稿
   const handleSaveDraft = async () => {
     // 验证必填字段
@@ -162,16 +255,63 @@ export default function DataEntryPage() {
     setIsSaving(true);
     
     try {
-      // TODO: 需要实现类型ID和主题ID的映射
-      // 这里需要根据实际的知识类型名称获取对应的ID
-      const typeId = 1; // 临时值，需要从后端获取知识类型列表
+      // 根据知识类型名称查找ID
+      const knowledgeType = knowledgeTypes.find(kt => kt.name === formData.knowledgeType);
+      if (!knowledgeType) {
+        toast.error('请选择有效的知识类型');
+        setIsSaving(false);
+        return;
+      }
+
+      // 将主题名称映射为ID（草稿可以不关联主题）
+      const themeIds: number[] = [];
+      const newThemeMap = new Map(themeMap);
+      for (const themeName of formData.themes) {
+        let themeId = newThemeMap.get(themeName);
+        if (themeId) {
+          themeIds.push(themeId);
+        } else {
+          // 尝试查找现有主题
+          try {
+            const themesRes = await themeAPI.getList();
+            const existingTheme = themesRes.themes?.find((t: any) => t.name === themeName);
+            if (existingTheme) {
+              themeIds.push(existingTheme.id);
+              newThemeMap.set(themeName, existingTheme.id);
+            }
+          } catch (error) {
+            console.error(`处理主题"${themeName}"失败:`, error);
+          }
+        }
+      }
+      setThemeMap(newThemeMap);
+
+      // 查找或创建 Section（草稿可以不关联section，但如果提供了就保存）
+      let sectionId: number | null = null;
+      if (formData.chapter && formData.section) {
+        try {
+          const codes = getSectionCodes();
+          const sectionRes = await sectionAPI.findOrCreate({
+            subjectCode: codes.subjectCode,
+            educationLevelCode: codes.educationLevelCode,
+            gradeCode: codes.gradeCode,
+            bookCode: codes.bookCode,
+            chapterName: formData.chapter,
+            sectionName: formData.section,
+          });
+          sectionId = sectionRes.section.id;
+        } catch (error: any) {
+          console.error('查找或创建 Section 失败:', error);
+          toast.warning('章和节信息保存失败，但知识点已保存为草稿');
+        }
+      }
       
       await knowledgePointAPI.create({
         content: formData.content,
-        typeId: typeId,
+        typeId: knowledgeType.id,
         cognitiveLevelId: formData.cognitiveLevel ? parseInt(formData.cognitiveLevel) : null,
-        sectionId: null, // TODO: 根据选择的章节获取sectionId
-        themeIds: [], // TODO: 根据选择的主题获取themeIds
+        sectionId: sectionId,
+        themeIds: themeIds,
         versionTag: null,
       });
       
@@ -195,14 +335,72 @@ export default function DataEntryPage() {
     setIsSaving(true);
     
     try {
+      // 根据知识类型名称查找ID
+      const knowledgeType = knowledgeTypes.find(kt => kt.name === formData.knowledgeType);
+      if (!knowledgeType) {
+        toast.error('请选择有效的知识类型');
+        setIsSaving(false);
+        return;
+      }
+
+      // 将主题名称映射为ID
+      const themeIds: number[] = [];
+      for (const themeName of formData.themes) {
+        const themeId = themeMap.get(themeName);
+        if (themeId) {
+          themeIds.push(themeId);
+        } else {
+          // 如果是自定义主题，尝试查找或创建
+          try {
+            const themesRes = await themeAPI.getList();
+            const existingTheme = themesRes.themes?.find((t: any) => t.name === themeName);
+            if (existingTheme) {
+              themeIds.push(existingTheme.id);
+              themeMap.set(themeName, existingTheme.id);
+            } else {
+              toast.warning(`主题"${themeName}"不存在，将跳过该主题`);
+            }
+          } catch (error) {
+            console.error(`处理主题"${themeName}"失败:`, error);
+          }
+        }
+      }
+
+      if (themeIds.length === 0) {
+        toast.error('请至少选择一个有效的主题');
+        setIsSaving(false);
+        return;
+      }
+
+      // 查找或创建 Section
+      let sectionId: number | null = null;
+      if (formData.chapter && formData.section) {
+        try {
+          const codes = getSectionCodes();
+          const sectionRes = await sectionAPI.findOrCreate({
+            subjectCode: codes.subjectCode,
+            educationLevelCode: codes.educationLevelCode,
+            gradeCode: codes.gradeCode,
+            bookCode: codes.bookCode,
+            chapterName: formData.chapter,
+            sectionName: formData.section,
+          });
+          sectionId = sectionRes.section.id;
+        } catch (error: any) {
+          console.error('查找或创建 Section 失败:', error);
+          toast.error('章和节信息保存失败: ' + (error.message || '未知错误'));
+          setIsSaving(false);
+          return;
+        }
+      }
+      
       // 先创建知识点
-      const typeId = 1; // TODO: 需要从后端获取
       const result = await knowledgePointAPI.create({
         content: formData.content,
-        typeId: typeId,
+        typeId: knowledgeType.id,
         cognitiveLevelId: formData.cognitiveLevel ? parseInt(formData.cognitiveLevel) : null,
-        sectionId: null,
-        themeIds: [],
+        sectionId: sectionId,
+        themeIds: themeIds,
         versionTag: null,
       });
       
@@ -262,9 +460,11 @@ export default function DataEntryPage() {
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
           >
             <option value="">请选择教材版本</option>
-            {textbookVersions.map(version => (
-              <option key={version} value={version}>{version}</option>
-            ))}
+            <option value="人教版">人教版</option>
+            <option value="北师大版">北师大版</option>
+            <option value="苏教版">苏教版</option>
+            <option value="沪教版">沪教版</option>
+            <option value="湘教版">湘教版</option>
           </select>
         </div>
 
@@ -300,6 +500,21 @@ export default function DataEntryPage() {
             disabled={!formData.educationLevel}
           >
             <option value="">请选择年级</option>
+            {formData.educationLevel === '初中' && (
+              <>
+                <option value="七年级">七年级</option>
+                <option value="八年级">八年级</option>
+                <option value="九年级">九年级</option>
+              </>
+            )}
+            {formData.educationLevel === '高中' && (
+              <>
+                <option value="高一年级">高一年级</option>
+                <option value="高二年级">高二年级</option>
+                <option value="高三年级">高三年级</option>
+              </>
+            )}
+            {/* 旧代码已移除
             {formData.educationLevel && grades[formData.educationLevel as keyof typeof grades] && 
               grades[formData.educationLevel as keyof typeof grades].map(grade => (
                 <option key={grade} value={grade}>{grade}</option>
@@ -320,9 +535,8 @@ export default function DataEntryPage() {
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
           >
             <option value="">请选择册别</option>
-            {books.map(book => (
-              <option key={book} value={book}>{book}</option>
-            ))}
+            <option value="上册">上册</option>
+            <option value="下册">下册</option>
           </select>
         </div>
       </div>
@@ -332,38 +546,30 @@ export default function DataEntryPage() {
           <label htmlFor="chapter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             章 <span className="text-red-500">*</span>
           </label>
-          <select
+          <input
+            type="text"
             id="chapter"
             name="chapter"
             value={formData.chapter}
             onChange={handleChange}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
-            disabled={availableChapters.length === 0}
-          >
-            <option value="">请选择章</option>
-            {availableChapters.map(chapter => (
-              <option key={chapter} value={chapter}>{chapter}</option>
-            ))}
-          </select>
+            placeholder="请输入章名称，如：第一章 有理数"
+          />
         </div>
 
         <div>
           <label htmlFor="section" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             节 <span className="text-red-500">*</span>
           </label>
-          <select
+          <input
+            type="text"
             id="section"
             name="section"
             value={formData.section}
             onChange={handleChange}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
-            disabled={availableSections.length === 0}
-          >
-            <option value="">请选择节</option>
-            {availableSections.map(section => (
-              <option key={section} value={section}>{section}</option>
-            ))}
-          </select>
+            placeholder="请输入节名称，如：1.1 正数和负数"
+          />
         </div>
       </div>
     </div>
@@ -411,10 +617,18 @@ export default function DataEntryPage() {
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
           >
             <option value="">请选择知识类型</option>
-            <option value="事实性知识">事实性知识</option>
-            <option value="概念性知识">概念性知识</option>
-            <option value="原理规则">原理规则</option>
-            <option value="技能性知识">技能性知识</option>
+            {knowledgeTypes.length > 0 ? (
+              knowledgeTypes.map((type: any) => (
+                <option key={type.id} value={type.name}>{type.name}</option>
+              ))
+            ) : (
+              <>
+                <option value="事实性知识">事实性知识</option>
+                <option value="概念性知识">概念性知识</option>
+                <option value="原理规则">原理规则</option>
+                <option value="技能">技能</option>
+              </>
+            )}
           </select>
         </div>
 
@@ -445,21 +659,98 @@ export default function DataEntryPage() {
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           所属主题（可多选） <span className="text-red-500">*</span>
         </label>
-        <div className="flex flex-wrap gap-2">
-          {availableThemes.map(theme => (
+        <div className="space-y-3">
+          {/* 预设主题 */}
+          <div className="flex flex-wrap gap-2">
+            {availableThemes.length > 0 ? (
+              availableThemes.map((themeName: string) => (
+                <button
+                  key={themeName}
+                  type="button"
+                  onClick={() => handleThemeChange(themeName)}
+                  className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                    formData.themes.includes(themeName)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {themeName}
+                </button>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500">主题数据加载中...</div>
+            )}
+          </div>
+
+          {/* 自定义主题输入 */}
+          {showCustomThemeInput ? (
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={customThemeInput}
+                onChange={(e) => setCustomThemeInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomTheme();
+                  }
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
+                placeholder="输入自定义主题名称"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomTheme}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              >
+                添加
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomThemeInput(false);
+                  setCustomThemeInput('');
+                }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          ) : (
             <button
-              key={theme}
               type="button"
-              onClick={() => handleThemeChange(theme)}
-              className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                formData.themes.includes(theme)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
+              onClick={() => setShowCustomThemeInput(true)}
+              className="px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors text-sm"
             >
-              {theme}
+              <i className="fa-solid fa-plus mr-2"></i>
+              添加自定义主题
             </button>
-          ))}
+          )}
+
+          {/* 已选主题显示 */}
+          {formData.themes.length > 0 && (
+            <div className="mt-2">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">已选主题：</div>
+              <div className="flex flex-wrap gap-2">
+                {formData.themes.map((theme) => (
+                  <span
+                    key={theme}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-sm"
+                  >
+                    {theme}
+                    <button
+                      type="button"
+                      onClick={() => handleThemeChange(theme)}
+                      className="ml-1 hover:text-red-600 dark:hover:text-red-400"
+                    >
+                      <i className="fa-solid fa-times text-xs"></i>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -476,9 +767,23 @@ export default function DataEntryPage() {
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700"
           >
             <option value="">请选择认知层级</option>
-            {cognitiveLevels.map(level => (
-              <option key={level} value={level}>{level}</option>
-            ))}
+            {cognitiveLevels.length > 0 ? (
+              cognitiveLevels.map((level: any) => (
+                <option key={level.id} value={level.id}>
+                  {level.name}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="">认知层级数据加载中...</option>
+                <option value="1">识记</option>
+                <option value="2">理解</option>
+                <option value="3">应用</option>
+                <option value="4">分析</option>
+                <option value="5">综合</option>
+                <option value="6">评价</option>
+              </>
+            )}
           </select>
         </div>
       </div>

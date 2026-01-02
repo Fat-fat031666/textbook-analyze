@@ -16,6 +16,13 @@
 
 ## 🚀 快速开始
 
+### 前置要求
+
+- Node.js 18+
+- pnpm（或 npm/yarn）
+- MySQL 8.0+
+- 端口 3000 和 3001 可用
+
 ### 方式一：使用检查脚本（推荐）
 
 ```bash
@@ -27,31 +34,7 @@
 
 ### 方式二：手动启动
 
-详细步骤请查看 [QUICK_START.md](./QUICK_START.md) 或 [START_PROJECT.md](./START_PROJECT.md)
-
-### 快速命令
-
-```bash
-# 检查项目
-./check-project.sh
-
-# 启动后端（终端1）
-cd server && pnpm dev
-
-# 启动前端（终端2）
-pnpm dev
-```
-
-## 📋 前置要求
-
-- Node.js 18+
-- pnpm（或 npm/yarn）
-- MySQL 8.0+
-- 端口 3000 和 3001 可用
-
-## 🔧 配置步骤
-
-### 1. 安装依赖
+#### 1. 安装依赖
 
 ```bash
 # 前端
@@ -62,7 +45,7 @@ cd server
 pnpm install
 ```
 
-### 2. 配置数据库
+#### 2. 配置数据库
 
 ```bash
 # 创建数据库
@@ -70,25 +53,32 @@ mysql -u root -p
 CREATE DATABASE textbook_analyze CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 3. 配置环境变量
+#### 3. 配置环境变量
+
+在 `server` 目录下创建 `.env` 文件：
+
+```env
+DATABASE_URL="mysql://root:your_password@localhost:3306/textbook_analyze?schema=public"
+JWT_SECRET="dev-secret-key-change-in-production"
+JWT_EXPIRES_IN="7d"
+PORT=3001
+NODE_ENV=development
+BCRYPT_ROUNDS=10
+FRONTEND_URL="http://localhost:3000"
+```
+
+**重要**：请将 `your_password` 替换为您的 MySQL 密码。
+
+#### 4. 初始化数据库
 
 ```bash
 cd server
-# 创建 .env 文件
-cp .env.example .env
-# 编辑 .env，修改数据库密码
+pnpm db:generate  # 生成 Prisma Client
+pnpm db:push      # 推送数据库结构
+pnpm db:seed      # 初始化种子数据（创建测试账号）
 ```
 
-### 4. 初始化数据库
-
-```bash
-cd server
-pnpm db:generate
-pnpm db:push
-pnpm db:seed
-```
-
-### 5. 启动服务
+#### 5. 启动服务
 
 ```bash
 # 终端1 - 后端
@@ -98,6 +88,11 @@ pnpm dev
 # 终端2 - 前端
 pnpm dev
 ```
+
+#### 6. 访问应用
+
+- 前端: http://localhost:3000
+- 后端: http://localhost:3001
 
 ## 🧪 测试账号
 
@@ -126,17 +121,8 @@ textbook/
 │   │   └── ...
 │   └── prisma/           # 数据库模型
 ├── check-project.sh      # 项目检查脚本
-└── 文档...
+└── README.md             # 本文档
 ```
-
-## 📚 文档
-
-- [QUICK_START.md](./QUICK_START.md) - 快速启动指南
-- [START_PROJECT.md](./START_PROJECT.md) - 完整启动指南
-- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - 问题排查
-- [FRONTEND_BACKEND_INTEGRATION.md](./FRONTEND_BACKEND_INTEGRATION.md) - 前后端集成
-- [PROJECT_STATUS.md](./PROJECT_STATUS.md) - 项目状态
-- [server/README.md](./server/README.md) - 后端文档
 
 ## 🛠️ 技术栈
 
@@ -151,41 +137,6 @@ textbook/
 - Prisma ORM
 - MySQL
 - JWT 认证
-
-## 🔍 检查项目状态
-
-运行检查脚本：
-
-```bash
-./check-project.sh
-```
-
-这会检查：
-- Node.js 和包管理器
-- MySQL 服务
-- 依赖安装情况
-- 环境变量配置
-- 端口占用情况
-- 关键文件存在性
-
-## ⚠️ 常见问题
-
-### 数据库连接失败
-- 检查 MySQL 服务是否运行
-- 检查 `.env` 中的 `DATABASE_URL`
-- 确认数据库已创建
-
-### 端口被占用
-- 修改 `server/.env` 中的 `PORT`
-- 或关闭占用端口的程序
-
-### pnpm 未找到
-```bash
-npm install -g pnpm
-# 或使用 npm 替代
-```
-
-更多问题请查看 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ## 📝 开发命令
 
@@ -219,6 +170,61 @@ pnpm db:studio    # 打开 Prisma Studio
 
 完整 API 文档请查看 [server/README.md](./server/README.md)
 
+## ⚠️ 常见问题
+
+### 数据库连接失败
+- 检查 MySQL 服务是否运行
+- 检查 `.env` 中的 `DATABASE_URL`
+- 确认数据库已创建
+
+### 端口被占用
+- 修改 `server/.env` 中的 `PORT`
+- 或关闭占用端口的程序
+
+### pnpm 未找到
+```bash
+npm install -g pnpm
+# 或使用 npm 替代
+```
+
+### 登录失败
+1. 确保后端服务正在运行（http://localhost:3001）
+2. 确保已运行 `pnpm db:seed` 初始化测试账号
+3. 检查浏览器控制台是否有错误
+4. 测试 API：
+   ```bash
+   curl -X POST http://localhost:3001/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"admin@example.com","password":"admin123"}'
+   ```
+
+### Prisma 错误
+```bash
+cd server
+# 重新生成 Prisma Client
+pnpm db:generate
+```
+
+### CORS 错误
+- 检查 `server/.env` 中的 `FRONTEND_URL`
+- 确保值为 `http://localhost:3000`
+
+## 🔍 检查项目状态
+
+运行检查脚本：
+
+```bash
+./check-project.sh
+```
+
+这会检查：
+- Node.js 和包管理器
+- MySQL 服务
+- 依赖安装情况
+- 环境变量配置
+- 端口占用情况
+- 关键文件存在性
+
 ## 🔒 安全提示
 
 - ⚠️ 生产环境请修改所有默认密码
@@ -226,20 +232,36 @@ pnpm db:studio    # 打开 Prisma Studio
 - ⚠️ 不要将 `.env` 文件提交到 Git
 - ⚠️ 定期备份数据库
 
-## 📄 许可证
+## 📊 项目状态
 
-本项目由 [网站开发专家](https://space.coze.cn/) 创建。
+### ✅ 已完成
+- 后端 API 服务（Express + Prisma）
+- 用户认证和权限管理（JWT + RBAC）
+- 知识点 CRUD 操作
+- 审核工作流
+- 前端页面（登录、注册、数据录入、仪表盘、主页面、详情页）
+- 所有页面已连接到后端 API
+- 所有模拟数据已清除
+
+### ⚠️ 待完善
+- 选项数据 API（知识类型、认知层级、主题等）
+- 类型名称到 ID 的映射
+- 章节层级结构 API
+
+## 📚 相关文档
+
+- [server/README.md](./server/README.md) - 后端详细文档
+- [server/ENV_SETUP.md](./server/ENV_SETUP.md) - 环境变量配置详细说明
 
 ## 🆘 获取帮助
 
-1. 查看文档目录中的相关指南
+1. 查看本文档的常见问题部分
 2. 运行 `./check-project.sh` 检查项目状态
 3. 查看浏览器控制台和终端日志
-4. 参考 `TROUBLESHOOTING.md` 排查问题
+4. 参考后端文档 [server/README.md](./server/README.md)
 
 ---
 
 **项目状态**: ✅ 可以运行（部分功能需要完善）
 
 **最后更新**: 2024年
-

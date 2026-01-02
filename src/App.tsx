@@ -9,8 +9,7 @@ import DataEntryPage from "@/pages/DataEntryPage";
 import { ClassificationFrameModal } from "@/components/ClassificationFrameModal";
 import { useState, useEffect } from "react";
 
-// 导入示例数据
-import { textbookData } from "@/data/textbookData";
+// 不再使用本地示例数据，改为从后端API获取
 
 export default function App() {
   const [isClassificationFrameOpen, setIsClassificationFrameOpen] = useState(false);
@@ -65,7 +64,6 @@ export default function App() {
           path="/main" 
           element={
             <MainPage 
-              textbookData={textbookData} 
               openClassificationFrame={openClassificationFrame}
             />
           } 
@@ -74,7 +72,6 @@ export default function App() {
           path="/content/:sectionId" 
           element={
             <ContentDetailPage 
-              textbookData={textbookData}
               openClassificationFrame={openClassificationFrame}
             />
           } 

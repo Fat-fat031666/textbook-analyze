@@ -102,6 +102,9 @@ export const knowledgePointAPI = {
     status?: string;
     typeId?: number;
     cognitiveLevelId?: number;
+    creatorId?: number;
+    sectionId?: number;
+    themeId?: number;
     page?: number;
     limit?: number;
   }) => {
@@ -254,6 +257,63 @@ export const userAPI = {
   update: async (id: number, data: any) => {
     return apiRequest(`/users/${id}`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// 选项数据相关 API
+export const optionAPI = {
+  // 获取知识类型列表
+  getKnowledgeTypes: async () => {
+    return apiRequest<{ knowledgeTypes: Array<{ id: number; name: string; description?: string }> }>('/options/knowledge-types');
+  },
+
+  // 获取认知层级列表
+  getCognitiveLevels: async () => {
+    return apiRequest<{ cognitiveLevels: Array<{ id: number; name: string; description?: string; level: number }> }>('/options/cognitive-levels');
+  },
+};
+
+// Section 相关 API
+export const sectionAPI = {
+  // 查找或创建 Section
+  findOrCreate: async (data: {
+    subjectCode: string;
+    educationLevelCode: string;
+    gradeCode: string;
+    bookCode: string;
+    chapterName: string;
+    sectionName: string;
+  }) => {
+    return apiRequest<{
+      section: {
+        id: number;
+        name: string;
+        code: string;
+        chapter: {
+          id: number;
+          name: string;
+          book: {
+            id: number;
+            name: string;
+            grade: {
+              id: number;
+              name: string;
+              educationLevel: {
+                id: number;
+                name: string;
+                subject: {
+                  id: number;
+                  name: string;
+                };
+              };
+            };
+          };
+        };
+      };
+    }>('/sections/find-or-create', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   },

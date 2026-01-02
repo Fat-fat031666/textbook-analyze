@@ -8,6 +8,8 @@ import knowledgePointRoutes from './routes/knowledgePoint.routes.js';
 import themeRoutes from './routes/theme.routes.js';
 import interactionRoutes from './routes/interaction.routes.js';
 import auditRoutes from './routes/audit.routes.js';
+import optionRoutes from './routes/option.routes.js';
+import sectionRoutes from './routes/section.routes.js';
 
 dotenv.config();
 
@@ -34,6 +36,8 @@ app.use('/api/knowledge-points', knowledgePointRoutes);
 app.use('/api/themes', themeRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/options', optionRoutes);
+app.use('/api/sections', sectionRoutes);
 
 // 错误处理
 app.use(errorHandler);

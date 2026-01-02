@@ -1,48 +1,79 @@
 // 个人工作台页面
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-// 模拟任务数据
-const taskData = [
-  { id: 1, textbook: '人教版', chapters: '七年级上册第1-2章', deadline: '2024-01-30', status: '进行中' },
-  { id: 2, textbook: '北师大版', chapters: '八年级下册第3章', deadline: '2024-02-15', status: '待开始' },
-  { id: 3, textbook: '苏教版', chapters: '九年级上册第5-6章', deadline: '2024-01-20', status: '已完成' },
-];
-
-// 模拟数据统计
-const dataStats = [
-  { name: '草稿', value: 8, color: '#60a5fa' },
-  { name: '待审核', value: 5, color: '#fbbf24' },
-  { name: '已发布', value: 12, color: '#34d399' },
-  { name: '已驳回', value: 2, color: '#f87171' },
-];
-
-// 模拟评论动态
-const commentActivity = [
-  { id: 1, content: '您对"正数和负数"的分析很有见地！', user: '李老师', time: '10分钟前', unread: true },
-  { id: 2, content: '有理数分类部分需要补充一些实例', user: '王教研员', time: '2小时前', unread: false },
-];
-
-// 模拟系统通知
-const notifications = [
-  { id: 1, title: '数据审核通过', content: '您提交的"正数的定义"已审核通过', time: '今天 09:30', type: 'success', unread: true },
-  { id: 2, title: '新任务分配', content: '您有新的教材录入任务，请及时查看', time: '昨天 14:20', type: 'task', unread: true },
-  { id: 3, title: '系统公告', content: '平台将于本周日进行升级维护', time: '2024-01-10', type: 'announcement', unread: false },
-  { id: 4, title: '评论回复', content: '李老师回复了您的评论', time: '2024-01-08', type: 'comment', unread: false },
-  { id: 5, title: '数据驳回', content: '您提交的"负数的应用"需要修改', time: '2024-01-05', type: 'error', unread: false },
-];
+import { toast } from 'sonner';
+import { knowledgePointAPI, auditAPI, interactionAPI } from '@/lib/api';
 
 export default function DashboardPage() {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [dataStats, setDataStats] = useState([
+    { name: '草稿', value: 0, color: '#60a5fa' },
+    { name: '待审核', value: 0, color: '#fbbf24' },
+    { name: '已发布', value: 0, color: '#34d399' },
+    { name: '已驳回', value: 0, color: '#f87171' },
+  ]);
+  const [pendingReviews, setPendingReviews] = useState<any[]>([]);
+  const [recentInteractions, setRecentInteractions] = useState<any[]>([]);
   const navigate = useNavigate();
-
-  // 获取未读通知数量
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   // 获取用户信息
   const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // 从后端获取数据
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!userInfo.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // 获取用户的知识点统计数据
+        const [draftRes, pendingRes, publishedRes, rejectedRes] = await Promise.all([
+          knowledgePointAPI.getList({ creatorId: userInfo.id, status: 'DRAFT', limit: 1 }),
+          knowledgePointAPI.getList({ creatorId: userInfo.id, status: 'PENDING', limit: 1 }),
+          knowledgePointAPI.getList({ creatorId: userInfo.id, status: 'PUBLISHED', limit: 1 }),
+          knowledgePointAPI.getList({ creatorId: userInfo.id, status: 'REJECTED', limit: 1 }),
+        ]);
+
+        setDataStats([
+          { name: '草稿', value: draftRes.pagination?.total || 0, color: '#60a5fa' },
+          { name: '待审核', value: pendingRes.pagination?.total || 0, color: '#fbbf24' },
+          { name: '已发布', value: publishedRes.pagination?.total || 0, color: '#34d399' },
+          { name: '已驳回', value: rejectedRes.pagination?.total || 0, color: '#f87171' },
+        ]);
+
+        // 如果是审核员或管理员，获取待审核列表
+        if (userInfo.role === 'AUDITOR' || userInfo.role === 'ADMIN') {
+          try {
+            const pendingData = await auditAPI.getPending({ limit: 5 });
+            setPendingReviews(pendingData.knowledgePoints || []);
+          } catch (error) {
+            // 权限不足时忽略
+          }
+        }
+
+        // 获取最近的评论（简化版，实际应该获取与用户相关的评论）
+        // 这里暂时留空，因为需要更复杂的查询逻辑
+
+      } catch (error: any) {
+        console.error('获取数据失败:', error);
+        toast.error('加载数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [userInfo.id, userInfo.role]);
+
+  // 获取未读通知数量（暂时基于待审核数量）
+  const unreadCount = pendingReviews.length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 md:p-8">
@@ -82,36 +113,37 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.map(notification => (
-                    <div
-                      key={notification.id}
-                      className={`p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${notification.unread ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-1 p-1 rounded-full ${
-                          notification.type === 'success' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
-                          notification.type === 'error' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                          notification.type === 'task' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                          'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
-                        }`}>
-                          <i className={`fa-solid ${
-                            notification.type === 'success' ? 'fa-check' :
-                            notification.type === 'error' ? 'fa-times' :
-                            notification.type === 'task' ? 'fa-tasks' :
-                            'fa-bullhorn'
-                          }`}></i>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <h4 className={`font-medium text-sm ${notification.unread ? 'font-bold' : ''}`}>{notification.title}</h4>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{notification.time}</span>
+                  {pendingReviews.length > 0 ? (
+                    pendingReviews.map((review: any) => (
+                      <div
+                        key={review.id}
+                        className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors bg-blue-50 dark:bg-blue-900/20"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 p-1 rounded-full bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">
+                            <i className="fa-solid fa-clock"></i>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{notification.content}</p>
+                          
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-medium text-sm font-bold">待审核知识点</h4>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(review.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {review.content?.substring(0, 50) || '知识点'}...
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              创建者: {review.creator?.realName || review.creator?.username || '未知'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-gray-500 text-sm">暂无通知</div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -147,33 +179,37 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-3">
-              {taskData.map(task => (
-                <motion.div
-                  key={task.id}
-                  whileHover={{ scale: 1.01 }}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  onClick={() => navigate('/main')}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{task.textbook} - {task.chapters}</h3>
-                      <div className="flex gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <i className="fa-solid fa-calendar-alt"></i>
-                          <span>截止日期：{task.deadline}</span>
-                        </span>
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">加载中...</div>
+              ) : pendingReviews.length > 0 ? (
+                pendingReviews.map((review: any) => (
+                  <motion.div
+                    key={review.id}
+                    whileHover={{ scale: 1.01 }}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => navigate(`/content/${review.sectionId || review.id}`)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-medium line-clamp-2">{review.content?.substring(0, 50) || '知识点')}...</h3>
+                        <div className="flex gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          <span>创建者: {review.creator?.realName || review.creator?.username || '未知'}</span>
+                          <span>类型: {review.type?.name || '未知'}</span>
+                        </div>
                       </div>
+                      <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        待审核
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      task.status === '进行中' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                      task.status === '待开始' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                    }`}>
-                      {task.status}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {userInfo.role === 'AUDITOR' || userInfo.role === 'ADMIN' 
+                    ? '暂无待审核内容' 
+                    : '暂无任务'}
+                </div>
+              )}
             </div>
           </motion.div>
           
@@ -240,23 +276,30 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-4">
-              {commentActivity.map(activity => (
-                <div
-                  key={activity.id}
-                  className={`p-3 border-l-4 ${activity.unread ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-gray-200 dark:border-gray-700'} rounded`}
-                >
-                  <div className="flex justify-between items-start">
-                    <p className="text-sm text-gray-800 dark:text-gray-200">{activity.content}</p>
-                    {activity.unread && (
-                      <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                    )}
+              {loading ? (
+                <div className="text-center py-4 text-gray-500 text-sm">加载中...</div>
+              ) : recentInteractions.length > 0 ? (
+                recentInteractions.map((interaction: any) => (
+                  <div
+                    key={interaction.id}
+                    className="p-3 border-l-4 border-gray-200 dark:border-gray-700 rounded"
+                  >
+                    <div className="flex justify-between items-start">
+                      <p className="text-sm text-gray-800 dark:text-gray-200">{interaction.content}</p>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        来自 {interaction.user?.realName || interaction.user?.username || '未知'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(interaction.createdAt).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">来自 {activity.user}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500 text-sm">暂无评论动态</div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -320,26 +363,30 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold text-blue-700 dark:text-blue-300 mb-4">近7天提交趋势</h2>
             
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[
-                    { day: '周一', count: 2 },
-                    { day: '周二', count: 1 },
-                    { day: '周三', count: 3 },
-                    { day: '周四', count: 0 },
-                    { day: '周五', count: 2 },
-                    { day: '周六', count: 1 },
-                    { day: '周日', count: 4 },
-                  ]}
-                  margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#60a5fa" />
-                </BarChart>
-              </ResponsiveContainer>
+              {loading ? (
+                <div className="flex items-center justify-center h-full text-gray-500">加载中...</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { day: '周一', count: 0 },
+                      { day: '周二', count: 0 },
+                      { day: '周三', count: 0 },
+                      { day: '周四', count: 0 },
+                      { day: '周五', count: 0 },
+                      { day: '周六', count: 0 },
+                      { day: '周日', count: 0 },
+                    ]}
+                    margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#60a5fa" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </motion.div>
         </div>

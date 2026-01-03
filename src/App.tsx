@@ -6,6 +6,7 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
 import DataEntryPage from "@/pages/DataEntryPage";
+import AuditPage from "@/pages/AuditPage";
 import { ClassificationFrameModal } from "@/components/ClassificationFrameModal";
 import { useState, useEffect } from "react";
 
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={isAuthenticated ? <DashboardPage /> : <LoginPage />} />
         <Route path="/data-entry" element={isAuthenticated ? <DataEntryPage /> : <LoginPage />} />
+        <Route path="/audit" element={isAuthenticated ? <AuditPage /> : <LoginPage />} />
         <Route 
           path="/main" 
           element={

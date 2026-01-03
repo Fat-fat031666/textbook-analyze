@@ -205,8 +205,18 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {userInfo.role === 'AUDITOR' || userInfo.role === 'ADMIN' 
-                    ? '暂无待审核内容' 
+                  {userInfo.role === 'AUDITOR' || userInfo.role === 'ADMIN' ? (
+                    pendingReviews.length > 0 ? (
+                      <button
+                        onClick={() => navigate('/audit')}
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        前往审核页面
+                      </button>
+                    ) : (
+                      '暂无待审核内容'
+                    )
+                  ) 
                     : '暂无任务'}
                 </div>
               )}
@@ -221,6 +231,19 @@ export default function DashboardPage() {
             className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6"
           >
             <h2 className="text-xl font-semibold text-blue-700 dark:text-blue-300 mb-4">快捷操作</h2>
+            
+            {/* 审核员专用入口 */}
+            {(userInfo.role === 'AUDITOR' || userInfo.role === 'ADMIN') && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/audit')}
+                className="w-full mb-4 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-clipboard-check"></i>
+                <span>前往审核页面 ({pendingReviews.length} 待审核)</span>
+              </motion.button>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <motion.button

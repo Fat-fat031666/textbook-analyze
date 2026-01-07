@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { auditAPI, knowledgePointAPI } from '@/lib/api';
+import { LearningClassificationModal } from '@/components/ClassificationFrameModal';
 
 export default function AuditPage() {
   const [loading, setLoading] = useState(true);
@@ -14,6 +15,7 @@ export default function AuditPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [isClassificationFrameOpen, setIsClassificationFrameOpen] = useState(false);
   const navigate = useNavigate();
 
   // 获取用户信息
@@ -125,13 +127,22 @@ export default function AuditPage() {
               待审核知识点: {pendingKnowledgePoints.length} 条
             </p>
           </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <i className="fa-solid fa-arrow-left mr-2"></i>
-            返回工作台
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsClassificationFrameOpen(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <i className="fa-solid fa-info-circle"></i>
+              <span>分类框架说明</span>
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <i className="fa-solid fa-arrow-left mr-2"></i>
+              返回工作台
+            </button>
+          </div>
         </header>
 
         {/* 待审核列表 */}
@@ -384,6 +395,12 @@ export default function AuditPage() {
           </motion.div>
         </div>
       )}
+      
+      {/* 分类框架说明弹窗 */}
+      <LearningClassificationModal
+        isOpen={isClassificationFrameOpen}
+        onClose={() => setIsClassificationFrameOpen(false)}
+      />
     </div>
   );
 }

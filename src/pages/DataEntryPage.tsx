@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { knowledgePointAPI, optionAPI, themeAPI, sectionAPI } from '@/lib/api';
+import { LearningClassificationModal } from '@/components/ClassificationFrameModal';
 
 export default function DataEntryPage() {
   const [step, setStep] = useState(1);
@@ -25,6 +26,7 @@ export default function DataEntryPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [customThemeInput, setCustomThemeInput] = useState('');
   const [showCustomThemeInput, setShowCustomThemeInput] = useState(false);
+  const [isClassificationFrameOpen, setIsClassificationFrameOpen] = useState(false);
   const navigate = useNavigate();
 
   // 从后端获取选项数据
@@ -893,6 +895,13 @@ export default function DataEntryPage() {
             <i className="fa-solid fa-arrow-left"></i>
             <span>返回工作台</span>
           </button>
+          <button
+            onClick={() => setIsClassificationFrameOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <i className="fa-solid fa-info-circle"></i>
+            <span>分类框架说明</span>
+          </button>
         </header>
 
         <motion.div
@@ -975,6 +984,12 @@ export default function DataEntryPage() {
           )}
         </div>
       </div>
+      
+      {/* 分类框架说明弹窗 */}
+      <LearningClassificationModal
+        isOpen={isClassificationFrameOpen}
+        onClose={() => setIsClassificationFrameOpen(false)}
+      />
     </div>
   );
 }

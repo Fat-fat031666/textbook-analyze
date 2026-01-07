@@ -1,137 +1,160 @@
-// 分类框架说明弹窗
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Brain, Heart, Activity, Info, X } from 'lucide-react';
 
-interface ClassificationFrameModalProps {
+interface LearningClassificationModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function ClassificationFrameModal({ isOpen, onClose }: ClassificationFrameModalProps) {
+export function LearningClassificationModal({ isOpen, onClose }: LearningClassificationModalProps) {
   if (!isOpen) return null;
+
+  // 学习分类框架的结构（对应你提供的表格）
+  const learningDomains = [
+    {
+      domain: "认知领域",
+      icon: <Brain size={24} />,
+      color: "bg-blue-500",
+      items: [
+        {
+          title: "知识（陈述性知识）",
+          children: ["事实与词汇", "概念", "原理、规则"]
+        },
+        {
+          title: "智慧技能（包含程序性知识）",
+          desc: "应用知识处理和解决问题的能力，根据程序化程度分为两类",
+          children: [
+            "技能（以运用已学规则为主）",
+            "问题解决与创造性（生成新规则，产生新知识）"
+          ]
+        },
+        {
+          title: "认知策略（包含元认知知识）",
+          children: []
+        }
+      ]
+    },
+    {
+      domain: "情感领域",
+      icon: <Heart size={24} />,
+      color: "bg-pink-500",
+      items: [
+        {
+          title: "",
+          children: ["自我认识与社会性", "态度与品德", "行为习惯"]
+        }
+      ]
+    },
+    {
+      domain: "动作领域",
+      icon: <Activity size={24} />,
+      color: "bg-orange-500",
+      items: [
+        {
+          title: "",
+          children: ["动作技能"]
+        }
+      ]
+    }
+  ];
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={onClose}
         >
-          <div className="sticky top-0 bg-white dark:bg-gray-800 p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-blue-700 dark:text-blue-300">知识分类框架说明</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
-              aria-label="关闭"
-            >
-              <i className="fa-solid fa-times text-xl"></i>
-            </button>
-          </div>
-
-          <div className="p-6">
-            <div className="mb-8">
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                知识分类体系是认知领域的重要框架，有助于教育工作者更好地理解和组织教学内容。以下是知识分类体系的核心层次：
-              </p>
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl shadow-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 头部区域 */}
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-lg">学习目标分类框架</h3>
+                <p className="text-sm text-slate-500">包含认知、情感、动作三大领域的分类体系</p>
+              </div>
+              <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                <X size={20} />
+              </button>
             </div>
 
-            {/* 思维导图样式的分类展示 */}
-            <div className="flex flex-col items-center mb-8">
-              {/* 中心节点 */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md mb-10 text-center max-w-xs"
+            {/* 内容区域（分三大领域展示） */}
+            <div className="p-4 max-h-[70vh] overflow-y-auto">
+              {learningDomains.map((domain, domainIdx) => (
+                <div key={domainIdx} className="mb-6">
+                  {/* 领域标题栏 */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded ${domain.color} text-white`}>
+                      {domain.icon}
+                    </div>
+                    <h4 className="font-bold text-lg">{domain.domain}</h4>
+                  </div>
+
+                  {/* 领域下的子分类 */}
+                  <div className="pl-2 space-y-3">
+                    {domain.items.map((item, itemIdx) => (
+                      <div key={itemIdx} className="bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg p-3">
+                        {/* 子分类标题（如“知识”“智慧技能”） */}
+                        {item.title && (
+                          <h5 className="font-semibold mb-2">{item.title}</h5>
+                        )}
+                        {/* 子分类描述 */}
+                        {item.desc && (
+                          <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">{item.desc}</p>
+                        )}
+                        {/* 子分类的具体项（如“事实与词汇”） */}
+                        <div className="flex flex-wrap gap-2">
+                          {item.children.map((child, childIdx) => (
+                            <span 
+                              key={childIdx} 
+                              className="px-2 py-1 bg-white dark:bg-gray-600 rounded-full text-sm border border-slate-200 dark:border-gray-500"
+                            >
+                              {child}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* 使用小贴士 */}
+              <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info size={16} className="text-blue-600" />
+                  <h4 className="font-bold text-blue-600">设计小贴士</h4>
+                </div>
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  教学设计时可从这三大领域全面设定目标：比如“掌握数学公式”（认知-知识）、“养成严谨的计算习惯”（情感-行为习惯）、“熟练使用绘图工具”（动作-动作技能）。
+                </p>
+              </div>
+            </div>
+
+            {/* 底部按钮 */}
+            <div className="p-4 border-t dark:border-gray-700 flex justify-end">
+              <button 
+                onClick={onClose}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <h3 className="font-bold text-lg">认知领域知识体系</h3>
-              </motion.div>
-
-              {/* 连接线 */}
-              <div className="h-10 w-1 bg-blue-300 dark:bg-blue-700 mb-10"></div>
-
-              {/* 第一层节点 - 横向排列 */}
-              <div className="flex flex-wrap justify-center gap-4 md:gap-12 mb-12">
-                {[
-                  { title: "事实性知识", color: "bg-green-500", description: "关于具体事物和现象的基本事实" },
-                  { title: "概念性知识", color: "bg-blue-500", description: "关于分类和类别的知识" },
-                  { title: "原理规则", color: "bg-purple-500", description: "关于事物之间关系的知识" },
-                  { title: "技能", color: "bg-orange-500", description: "应用知识解决问题的能力" }
-                ].map((item, index) => (
-                  <motion.div
-                    key={index}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    className={`${item.color} text-white rounded-lg shadow-md p-4 max-w-[200px] text-center`}
-                  >
-                    <h4 className="font-bold mb-2">{item.title}</h4>
-                    <p className="text-sm opacity-90">{item.description}</p>
-                  </motion.div>
-                ))}
-              </div>
+                了解完毕
+              </button>
             </div>
-
-            {/* 详细说明 */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-2">1. 事实性知识</h3>
-                <p className="text-gray-700 dark:text-gray-300 pl-4 border-l-2 border-green-400 dark:border-green-600">
-                  事实性知识是关于具体事物和现象的基本事实，是学生构建更复杂知识体系的基础。例如：数学中的定义、物理中的常数、历史事件的时间等。
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-2">2. 概念性知识</h3>
-                <p className="text-gray-700 dark:text-gray-300 pl-4 border-l-2 border-blue-400 dark:border-blue-600">
-                  概念性知识是关于分类和类别的知识，帮助学生理解事物的本质特征和相互关系。例如：数学中的数集概念、生物学中的分类系统等。
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-2">3. 原理规则</h3>
-                <p className="text-gray-700 dark:text-gray-300 pl-4 border-l-2 border-purple-400 dark:border-purple-600">
-                  原理规则是关于事物之间关系的知识，描述了事物如何运作或为什么会发生。例如：数学中的运算定律、物理中的牛顿定律、化学中的反应方程式等。
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-2">4. 技能</h3>
-                <p className="text-gray-700 dark:text-gray-300 pl-4 border-l-2 border-orange-400 dark:border-orange-600">
-                  技能是应用知识解决问题的能力，是将理论转化为实践的关键。例如：数学中的解题技巧、语言中的写作能力、实验操作技能等。
-                </p>
-              </div>
-            </div>
-
-            {/* 应用价值 */}
-            <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-2">教育应用价值</h3>
-              <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
-                <li>帮助教师明确教学目标和重点</li>
-                <li>指导教学设计和教学策略选择</li>
-                <li>促进学生知识结构的系统化和整合</li>
-                <li>为教学评价提供科学依据</li>
-                <li>优化学习路径，提高学习效率</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              关闭
-            </button>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
     </AnimatePresence>
   );
 }
+
+// 导出别名以保持向后兼容
+export const ClassificationFrameModal = LearningClassificationModal;

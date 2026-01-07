@@ -5,10 +5,12 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 import { knowledgePointAPI, auditAPI, interactionAPI } from '@/lib/api';
+import { LearningClassificationModal } from '@/components/ClassificationFrameModal';
 
 export default function DashboardPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isClassificationFrameOpen, setIsClassificationFrameOpen] = useState(false);
   const [dataStats, setDataStats] = useState([
     { name: '草稿', value: 0, color: '#60a5fa' },
     { name: '待审核', value: 0, color: '#fbbf24' },
@@ -85,6 +87,15 @@ export default function DashboardPage() {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* 分类框架说明按钮 */}
+          <button
+            onClick={() => setIsClassificationFrameOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <i className="fa-solid fa-info-circle"></i>
+            <span>分类框架说明</span>
+          </button>
+          
           {/* 通知图标 */}
           <div className="relative">
             <button
@@ -414,6 +425,12 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       </div>
+      
+      {/* 分类框架说明弹窗 */}
+      <LearningClassificationModal
+        isOpen={isClassificationFrameOpen}
+        onClose={() => setIsClassificationFrameOpen(false)}
+      />
     </div>
   );
 }

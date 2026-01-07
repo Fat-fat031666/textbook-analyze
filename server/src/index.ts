@@ -10,6 +10,7 @@ import interactionRoutes from './routes/interaction.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import optionRoutes from './routes/option.routes.js';
 import sectionRoutes from './routes/section.routes.js';
+import textbookRoutes from './routes/textbook.routes.js';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/interactions', interactionRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/options', optionRoutes);
 app.use('/api/sections', sectionRoutes);
+app.use('/api/textbook', textbookRoutes);
 
 // 错误处理
 app.use(errorHandler);

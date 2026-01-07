@@ -332,3 +332,45 @@ export const sectionAPI = {
   },
 };
 
+// 教材结构相关 API
+export const textbookAPI = {
+  // 获取教材结构树
+  getStructure: async (subjectId?: number) => {
+    const queryString = subjectId ? `?subjectId=${subjectId}` : '';
+    return apiRequest<{
+      subjects: Array<{
+        id: number;
+        name: string;
+        code: string;
+        educationLevels: Array<{
+          id: number;
+          name: string;
+          code: string;
+          grades: Array<{
+            id: number;
+            name: string;
+            code: string;
+            books: Array<{
+              id: number;
+              name: string;
+              code: string;
+              chapters: Array<{
+                id: number;
+                name: string;
+                code: string;
+                order: number;
+                sections: Array<{
+                  id: number;
+                  name: string;
+                  code: string;
+                  order: number;
+                }>;
+              }>;
+            }>;
+          }>;
+        }>;
+      }>;
+    }>(`/textbook/structure${queryString}`);
+  },
+};
+

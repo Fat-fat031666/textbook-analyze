@@ -4,12 +4,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { knowledgePointAPI, interactionAPI } from '@/lib/api';
+import { LearningClassificationModal } from '@/components/ClassificationFrameModal';
 
-interface ContentDetailPageProps {
-  openClassificationFrame: () => void;
-}
-
-export default function ContentDetailPage({ openClassificationFrame }: ContentDetailPageProps) {
+export default function ContentDetailPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
   const [knowledgePoints, setKnowledgePoints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +19,7 @@ export default function ContentDetailPage({ openClassificationFrame }: ContentDe
   const [commentInput, setCommentInput] = useState('');
   const [selectedCommentPoint, setSelectedCommentPoint] = useState<number | null>(null);
   const [sortCommentsBy, setSortCommentsBy] = useState<'latest' | 'hottest'>('latest');
+  const [isClassificationFrameOpen, setIsClassificationFrameOpen] = useState(false);
   const navigate = useNavigate();
 
   // 从后端获取知识点
@@ -283,6 +281,13 @@ export default function ContentDetailPage({ openClassificationFrame }: ContentDe
         
         <div className="flex gap-2">
           <button
+            onClick={() => setIsClassificationFrameOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <i className="fa-solid fa-info-circle"></i>
+            <span>分类框架说明</span>
+          </button>
+          <button
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             onClick={() => navigate('/main')}
           >
@@ -487,6 +492,12 @@ export default function ContentDetailPage({ openClassificationFrame }: ContentDe
           </div>
         </div>
       </div>
+      
+      {/* 分类框架说明弹窗 */}
+      <LearningClassificationModal
+        isOpen={isClassificationFrameOpen}
+        onClose={() => setIsClassificationFrameOpen(false)}
+      />
     </div>
   );
 }
